@@ -13,10 +13,10 @@ import json
 %pip install PyMuPDF pytesseract
 """
 
-def extract_text(pres_path, name) -> None:
+def extract_text(pres_path) -> None:
     """
     извлекает текст из pdf файла
-    принимает путь до файла и создает файл с именем name формата json
+    принимает путь до файла и создает файл с именем file формата json
     структура:
           "amount_slides": int - число слайдов,
           "titles": list - заголовки(первые строки) страниц,
@@ -74,5 +74,5 @@ def extract_text(pres_path, name) -> None:
     doc.close()
 
     # Сохранение в JSON
-    with open(name + ".json", "w", encoding="utf-8") as f:
+    with open("file.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
