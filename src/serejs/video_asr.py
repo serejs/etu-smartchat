@@ -76,5 +76,20 @@ def end2end_pipeline():
     print("Finishing script")
 
 
+def text_from_video(path: str) -> str:
+    audio_path = path.split('.mp4')[0] + '.mp3'
+    from_video_to_audio(path, audio_path)
+    asr_model = whisper.load_model(model_type)
+    text = transcribe_audio(asr_model, audio_path)
+    os.remove(audio_path)
+    return text
+
+
+def save_text(video_path: str, save_dir: str = '.'):
+    text = text_from_video(video_path)
+    new_name = Path(video_path).name.split('.mp4')[0] + '.txt'
+    write_text([os.path.join(save_dir, new_name)], [text])
+
+
 if __name__ == '__main__':
     end2end_pipeline()
