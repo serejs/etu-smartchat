@@ -66,7 +66,7 @@ def end2end_pipeline():
     texts = []
     for audio in audios:
         text = transcribe_audio(asr_model, os.path.join(audio_dir, audio))
-        filenames.append(audio.split('.mp3')[0] + '.txt')
+        filenames.append(os.path.join(texts_dir, audio.split('.mp3')[0] + '.txt'))
         texts.append(text)
         print('-', audio, 'is converted')
     print('Recognition is completed', end='\n\n')
