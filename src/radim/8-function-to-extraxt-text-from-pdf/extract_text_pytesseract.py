@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
 import io
+import os
 import json
 """
 для colab
@@ -11,6 +12,7 @@ import json
 !sudo apt install tesseract-ocr-eng -y  # Для английского языка
 !sudo apt install tesseract-ocr-rus -y  # Для русского языка
 %pip install PyMuPDF pytesseract
+import os
 """
 
 def extract_text(pres_path) -> None:
@@ -23,6 +25,8 @@ def extract_text(pres_path) -> None:
           "bodies": list - тело страниц,
           "text_images": list[list] - распознаный текст с картинок
     """
+    pdf_filename = os.path.basename(pres_path)
+    json_filename = os.path.splitext(pdf_filename)[0] + ".json"
     output = {
         "amount_slides": 0,
         "titles": [],
@@ -74,5 +78,5 @@ def extract_text(pres_path) -> None:
     doc.close()
 
     # Сохранение в JSON
-    with open("file.json", "w", encoding="utf-8") as f:
+    with open(json_filename, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
