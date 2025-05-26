@@ -1,10 +1,13 @@
+import arttish.model as model
+
+
 def get_answer(query: str) -> str:
-    return query
+    return model.llm.invoke(query).content
 
 
 if __name__ == '__main__':
     print('Type `!q` to exit')
-    user_text = ''
+    user_text = input()
     while user_text != '!q':
-        user_text = input()
         print(get_answer(user_text))
+        user_text = input()
