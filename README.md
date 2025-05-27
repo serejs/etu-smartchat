@@ -9,4 +9,4 @@
 Таски берем из соответсвующего проекта. Дополнительные ссылки или нужную инфу будем пока писать здесь или в чате.
 
 
-[Блокно](https://www.kaggle.com/code/serejs/etu-smartchat-recognition), где преобразование аудио в текст на каггле
+[Блокнот](https://www.kaggle.com/code/serejs/etu-smartchat-recognition), где преобразование аудио в текст на каггле
