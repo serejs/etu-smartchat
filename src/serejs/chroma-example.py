@@ -1,21 +1,16 @@
 import chromadb
 
-# setup Chroma in-memory, for easy prototyping. Can add persistence easily!
 client = chromadb.HttpClient(host='localhost', port=8000)
 client.heartbeat()
 
-
-# Create collection. get_collection, get_or_create_collection, delete_collection also available!
 collection = client.create_collection("all-my-documents")
 
-# Add docs to the collection. Can also update and delete. Row-based API coming soon!
 collection.add(
-    documents=["This is document1", "This is document2"], # we handle tokenization, embedding, and indexing automatically. You can skip that and add your own embeddings as well
-    metadatas=[{"source": "notion"}, {"source": "google-docs"}], # filter on these!
+    documents=["This is document1", "This is document2"],
+    metadatas=[{"source": "notion"}, {"source": "google-docs"}],
     ids=["doc1", "doc2"], # unique for each doc
 )
 
-# Query/search 2 most similar results. You can also .get by id
 results = collection.query(
     query_texts=["This is a query document"],
     n_results=2,
