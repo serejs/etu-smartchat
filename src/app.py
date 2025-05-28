@@ -1,8 +1,8 @@
-import arttish.model as model
+from arttish.model import get_model
 
 
 def get_answer(query: str) -> str:
-    return model.llm.invoke(query).content
+    return get_model().invoke(query).content
 
 
 if __name__ == '__main__':

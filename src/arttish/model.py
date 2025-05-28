@@ -6,14 +6,16 @@ import os
 model_repo = "gaianet/Qwen2.5-7B-Instruct-GGUF"
 model_basename = "Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 
-model_path = "C:/Практика/etu-smartchat/src/models/" + model_basename
+model_dir = os.getenv('MODELS_DIR', './models')
+
+model_path = os.path.join(model_dir, model_basename)
 
 if not os.path.exists(model_path):
     print(f"Downloading model {model_basename}")
     model_path = hf_hub_download(
         repo_id=model_repo,
         filename=model_basename,
-        local_dir="C:/Практика/etu-smartchat/models",
+        local_dir=model_dir,
     )
 else:
     print(f"Model {model_basename} is already downloaded.")
