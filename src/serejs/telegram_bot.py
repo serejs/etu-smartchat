@@ -1,7 +1,6 @@
 import logging
 import os
 
-from src.app import get_answer
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -34,7 +33,7 @@ async def conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     message = update.message.text
     logger.info("Message of %s: %s", user.first_name, message)
 
-    await update.message.reply_text(f"{get_answer(message)}")
+    await update.message.reply_text(f"{(message)[::-1]}")
     return 1
 
 
