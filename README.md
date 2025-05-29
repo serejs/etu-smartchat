@@ -10,3 +10,9 @@
 
 
 [Блокнот](https://www.kaggle.com/code/serejs/etu-smartchat-recognition), где преобразование аудио в текст на каггле
+
+Запуск контейнера из директории `/src`
+```bash
+docker compose build
+docker compose up
+```
