@@ -1,6 +1,5 @@
-networks:
-  net:
-    driver: bridge
+name: etu-smartchat
+
 services:
   chromadb:
     image: ghcr.io/chroma-core/chroma:1.0.11.dev29
@@ -12,17 +11,24 @@ services:
       - 8000:8000
     networks:
       - net
-  telegram-bot:
-    image: python:3.11-slim
-    volumes:
-      - .:/app
-    working_dir: /app
-    env_file:
-      - .env
-    command: >
-      bash -c "pip install python-telegram-bot==22.1 && python ./serejs/telegram_bot.py"
-    networks:
-      - net
+
+#  telegram-bot:
+#    image: python:3.11-slim
+#    volumes:
+#      - .:/app
+#    working_dir: /app
+#    env_file:
+#      - .env
+#    command: >
+#      bash -c "pip install python-telegram-bot==22.1 && python ./serejs/telegram_bot.py"
+#    networks:
+#      - net
+
+
+networks:
+  net:
+    driver: bridge
+
 volumes:
   chroma-data:
     driver: local
