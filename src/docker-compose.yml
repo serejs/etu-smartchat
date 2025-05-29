@@ -1,0 +1,18 @@
+networks:
+  net:
+    driver: bridge
+services:
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:1.0.11.dev29
+    environment:
+      - IS_PERSISTENT=TRUE
+    volumes:
+      - chroma-data:/chroma/chroma/
+    ports:
+      - 8000:8000
+    networks:
+      - net
+
+volumes:
+  chroma-data:
+    driver: local
