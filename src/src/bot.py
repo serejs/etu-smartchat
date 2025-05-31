@@ -3,6 +3,8 @@ import os
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 from telegram import Update
 from telegram.ext import (
@@ -25,8 +27,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 system_prompt = (
-    """Ты — ассистент, отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста:
-     {context}
+    """Ты — ассистент, отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста
+     Контекст: {context}
      
      Твои действия:
 1. Внимательно анализируй вставленный контекст из сообщения пользователя
@@ -38,18 +40,23 @@ system_prompt = (
 - Четкий ответ по существу
 - Без пояснений о своей работе
 - Без упоминания «контекста» в ответе
+- В ответе содержится не более трех предложений
 
 **Важно:**
 - НЕ дополняй информацию, даже если тема тебе знакома
 - НЕЛЬЗЯ выходить за рамки контекста ни при каких условиях"""
 )
 
+system_prompt = """Ты — ассистент. Отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста. Если ответа нет в контексте скажи, что ты не знаешь ответа. Для ответа используй не более 3 предложений
+Контекст: {context}
+"""
+
 retriever = db.as_retriever()
 
-init_model(temperature=0.1,
+init_model(temperature=0.2,
            max_tokens=1024,
            n_ctx=32768,
-           n_gpu_layers=40,
+           n_gpu_layers=-1,
            n_batch=512,
            verbose=False)
 
@@ -66,6 +73,21 @@ qa_chain = create_stuff_documents_chain(llm, prompt)
 chain = create_retrieval_chain(retriever, qa_chain)
 
 
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
+chain = (
+        {
+            "context": db.as_retriever() | format_docs,
+            "input": RunnablePassthrough(),
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
+)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     CURRENT_STATE = 1
 
@@ -79,10 +101,10 @@ async def conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     user = update.message.from_user
     message = update.message.text
     logger.info("Message of %s: %s", user.first_name, message)
-    res = chain.invoke({"input": message})
+    res = chain.invoke(message)
     logger.info("Model answer: %s", res)
 
-    await update.message.reply_text(res['answer'])
+    await update.message.reply_text(res)
     return 1
 
 
