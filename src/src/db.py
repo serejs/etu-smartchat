@@ -1,25 +1,26 @@
 from langchain_community.document_loaders import DirectoryLoader
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import LlamaCppEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from chromadb import HttpClient
 
-from src.model import model_path
+# from src.model import model_path
+
+# model_path = "../../models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf"
 
 from uuid import uuid4
 
-embeddings = LlamaCppEmbeddings(
-    model_path=model_path,
-    n_ctx=32768,
-    n_gpu_layers=40,
-    n_batch=512,
-    verbose=False
+embeddings = HuggingFaceEmbeddings(
+    model_name="DeepPavlov/rubert-base-cased"
 )
 
+client = HttpClient(host='86.110.212.181', port=7139)
+
 db = Chroma(
-    collection_name="Etu-smartchat",
+    collection_name="Etu-smartchat-exper01",
     embedding_function=embeddings,
-    client=HttpClient(host='localhost', port=8000)
+    client=client
 )
 
 
@@ -31,15 +32,27 @@ def add_docs_from_dir(
 ):
     loader = DirectoryLoader(directory_path, glob=glob_pattern)
     documents = loader.load()
-
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap
     )
-    chunks = text_splitter.split_documents(documents)
-    ids = [str(uuid4()) for _ in range(len(chunks))]
 
-    return db.add_documents(
-        documents=chunks,
-        ids=ids
-    )
+    res = []
+    for document in documents:
+        chunks = text_splitter.split_documents([document])
+        ids = [str(uuid4()) for _ in range(len(chunks))]
+        try:
+            print(ids)
+            res += db.add_documents(
+                documents=chunks,
+                ids=ids
+            )
+            print('ok')
+        except Exception as e:
+            print(e)
+    return res
+
+
+if __name__ == "__main__":
+
+    print()
