@@ -12,17 +12,17 @@ services:
     networks:
       - net
 
-#  telegram-bot:
-#    image: python:3.11-slim
-#    volumes:
-#      - .:/app
-#    working_dir: /app
-#    env_file:
-#      - .env
-#    command: >
-#      bash -c "pip install python-telegram-bot==22.1 && python ./serejs/telegram_bot.py"
-#    networks:
-#      - net
+  telegram-bot:
+    image: ghcr.io/abetlen/llama-cpp-python:v0.3.5
+    volumes:
+      - .:/app
+    working_dir: /app
+    env_file:
+      - ./src/.env
+    command: >
+      bash -c "pip install --no-cache-dir -r ./src/requirements.txt && python ./src/app.py"
+    networks:
+      - net
 
 
 networks:
