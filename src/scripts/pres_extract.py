@@ -1,8 +1,9 @@
+import io
+import json
+
 import fitz
 import pytesseract
 from PIL import Image
-import io
-import json
 
 """
 Для colab
@@ -76,5 +77,5 @@ def extract_text(pres_path) -> None:
     doc.close()
 
     # Save in JSON
-    with open("file.json", "w", encoding="utf-8") as f:
+    with open(json_filename, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
