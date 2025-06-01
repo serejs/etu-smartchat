@@ -69,12 +69,21 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
+# prompt = ChatPromptTemplate.from_template(f"<|im_start|><|system|>{system_prompt}<|im_end|\n\n>"
+#                                           f"<|im_start|><|user|>{'{input}'}<|im_end|><|endoftext|>")
+
 qa_chain = create_stuff_documents_chain(llm, prompt)
 chain = create_retrieval_chain(retriever, qa_chain)
 
 
 def format_docs(docs):
+    logger.info("Sources:\n%s\n", '\n'.join(doc.metadata['source'] for doc in docs))
     return "\n\n".join(doc.page_content for doc in docs)
+
+
+def log(inp):
+    logger.info(inp)
+    return inp
 
 
 chain = (
@@ -82,7 +91,7 @@ chain = (
             "context": db.as_retriever() | format_docs,
             "input": RunnablePassthrough(),
         }
-        | prompt
+        | prompt | log
         | llm
         | StrOutputParser()
 )
