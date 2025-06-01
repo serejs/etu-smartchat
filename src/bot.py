@@ -1,15 +1,13 @@
 import logging
 
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from src.db import db
-from src.model import init_model, get_model
+from db import db
+from model import init_model, get_model
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -22,7 +20,8 @@ logger = logging.getLogger(__name__)
 try:
     with open('prompts/system_prompt.txt', 'r', encoding='utf-8') as file:
         system_prompt = file.read()
-except Exception:
+except Exception as e:
+    print('Using default prompt, error fetching file', e)
     system_prompt = """
     Ты — ассистент. Отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста. 
     Если ответа нет в контексте скажи, что ты не знаешь ответа. Для ответа используй не более 3 предложений

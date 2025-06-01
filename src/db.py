@@ -2,7 +2,7 @@ from os import environ
 from uuid import uuid4
 
 from chromadb import HttpClient
-from langchain import HuggingFaceEmbeddings
+from langchain_hugginface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -56,6 +56,6 @@ def add_docs_from_dir(
             )
             print(ids, 'are uploaded..')
         except Exception as e:
-            print('Can\'t upload:', ids)
+            print("Can't upload:", ids)
             print('Due to:', e)
     return res

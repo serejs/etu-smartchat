@@ -2,8 +2,8 @@ langchain==0.3.25
 langchain-community==0.3.24
 langchain-core==0.3.61
 langchain-text-splitters==0.3.8
-llama-cpp-python==0.3.9
 huggingface-hub==0.32.2
+langchain_huggingface==0.2.0
 langchain-chroma==0.2.4
 chromadb==1.0.10
 unstructured==0.17.2
