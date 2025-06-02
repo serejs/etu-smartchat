@@ -6,8 +6,8 @@ from langchain_core.runnables import RunnablePassthrough
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from db import db
-from model import init_model, get_model
+from db import collection
+from model import model
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -22,25 +22,8 @@ try:
         system_prompt = file.read()
 except Exception as e:
     print('Using default prompt, error fetching file', e)
-    system_prompt = """
-Ты — ассистент, отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста.
-
+    system_prompt = """Ты — ассистент. Отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста. Если ответа нет в контексте скажи, что ты не знаешь ответа. Для ответа используй не более 5 предложений
 Контекст: {context}
-     
-     Твои действия:
-1. Внимательно анализируй вставленный контекст из сообщения пользователя
-2. Отвечай ТОЛЬКО если информация есть в контексте
-3. Если ответа в контексте нет — честно говори «В предоставленной информации нет ответа на этот вопрос»
-4. Никогда не используй внешние знания или предположения
-
-**Формат ответа:**
-- Четкий ответ по существу
-- Без пояснений о своей работе
-- Без упоминания «контекста» в ответе
-
-**Важно:**
-- НЕ дополняй информацию, даже если тема тебе знакома
-- НЕЛЬЗЯ выходить за рамки контекста ни при каких условиях
 """
 
 retriever = db.as_retriever()
@@ -96,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     - int: next state
     """
     await update.message.reply_text(
-        f"""Привет, чем я могу помочь?""")
+        f"""Привет, чем я могу помочь?""") # TODO: Улучшить приветственное сообщение
 
     return 1
 
