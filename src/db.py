@@ -2,7 +2,7 @@ from os import environ
 from uuid import uuid4
 
 from chromadb import HttpClient
-from langchain_hugginface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
