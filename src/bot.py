@@ -48,7 +48,7 @@ prompt = ChatPromptTemplate.from_messages(
 
 def format_docs(docs: QueryResult):
     logger.info(docs)
-    logger.info("Sources:\n%s\n", '\n'.join(metadata['source'] for metadata in docs['metadatas'] if 'source' in metadata))
+    logger.info("Sources:\n%s\n", '\n'.join(metadata['source'] for metadata in docs['metadatas'][0] if 'source' in metadata))
     return "\n\n".join(docs['documents'][0])
 
 
