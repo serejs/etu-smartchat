@@ -1,30 +1,35 @@
 from os import environ
 from uuid import uuid4
 
+import numpy as np
 from chromadb import HttpClient
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from yandex_cloud_ml_sdk import YCloudML
+from model import sdk
 
 import os
 import json
 
-sdk = YCloudML(
-    folder_id=os.getenv("YANDEX_FOLDER_ID"),
-    auth=os.getenv("YANDEX_AUTH")
-)
+from chromadb import EmbeddingFunction, Embeddings, Documents
 
 collection_name = environ.get("CHROMA_COLLECTION")
-embeddings = sdk.models.text_embeddings("doc")
-client = HttpClient(host=environ.get("CHROMA_HOST", 'localhost'), port=environ.get("CHROMA_PORT", "8000"))
+docs_embeddings = sdk.models.text_embeddings("doc")
 
-collection = client.get_or_create_collection(collection_name)
+
+class YaEmbeddings(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        return [np.array(docs_embeddings.run(doc)) for doc in input]
+
+
+client = HttpClient(host=environ.get("CHROMA_HOST", 'localhost'), port=environ.get("CHROMA_PORT", "8000"))
+ef = YaEmbeddings()
+collection = client.get_or_create_collection(collection_name, embedding_function=ef)
 
 
 def add_docs_from_dir(
         directory_path: str,
-        docks_metadata_json_path: str,
+        docks_metadata_json_path: str = None,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         glob_pattern: str = "**/*.txt"
@@ -49,24 +54,26 @@ def add_docs_from_dir(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap
     )
-
-    try:
-        with open(docks_metadata_json_path) as f:
-            raw_meta = json.load(f)
-    except FileNotFoundError:
-        print(f"File {docks_metadata_json_path} not found, using empty metadata.")
-        raw_meta = {}
+    raw_meta = {}
+    if docks_metadata_json_path is not None:
+        try:
+            with open(docks_metadata_json_path) as f:
+                raw_meta = json.load(f)
+        except FileNotFoundError:
+            print(f"File {docks_metadata_json_path} not found, using empty metadata.")
 
     for document in documents:
         name = os.path.splitext(os.path.basename(document.metadata["source"]))[0]
-        if name in raw_meta:
+        name = [key for key in raw_meta.keys() if key in name]
+        if len(name) != 0:
+            name = name[0]
+            document.metadata["source"] = name
             for meta in raw_meta[name]:
                 document.metadata[meta] = raw_meta[name][meta]
         chunks = text_splitter.split_documents([document])
         ids = [str(uuid4()) for _ in range(len(chunks))]
         collection.add(
-            documents=[document.page_content for document in chunks],
+            documents=[chunk.page_content for chunk in chunks],
             ids=ids,
-            metadatas=[document.metadata for document in chunks],
-            embeddings=[embeddings.run(document.page_content) for document in chunks]
+            metadatas=[chunk.metadata for chunk in chunks],
         )

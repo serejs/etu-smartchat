@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,7 +8,8 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import collection
-from model import model
+from model import model, sdk
+from chromadb import QueryResult
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -26,16 +28,15 @@ except Exception as e:
 Контекст: {context}
 """
 
-retriever = db.as_retriever()
+query_embedder = sdk.models.text_embeddings("query")
 
-init_model(temperature=0.05,
-           max_tokens=1024,
-           n_ctx=32768,
-           n_gpu_layers=-1,
-           n_batch=512,
-           verbose=False)
 
-llm = get_model()
+def retrieve(query):
+    query_embed = np.array(query_embedder.run(query))
+    return collection.query(query_embeddings=query_embed, n_results=4)
+
+
+llm = model
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -45,9 +46,10 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 
-def format_docs(docs):
-    logger.info("Sources:\n%s\n", '\n'.join(doc.metadata['source'] for doc in docs))
-    return "\n\n".join(doc.page_content for doc in docs)
+def format_docs(docs: QueryResult):
+    logger.info(docs)
+    logger.info("Sources:\n%s\n", '\n'.join(metadata['source'] for metadata in docs['metadatas'] if 'source' in metadata))
+    return "\n\n".join(docs['documents'][0])
 
 
 def log(inp):
@@ -58,8 +60,8 @@ def log(inp):
 # A processing chain for user input and response generation.
 chain = (
         {
-            "context": db.as_retriever() | format_docs,
-            "input":   RunnablePassthrough(),
+            "context": RunnablePassthrough() | retrieve | format_docs,
+            "input": RunnablePassthrough(),
         }
         | prompt | log
         | llm
@@ -79,7 +81,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     - int: next state
     """
     await update.message.reply_text(
-        f"""Привет, чем я могу помочь?""") # TODO: Улучшить приветственное сообщение
+        f"""Привет, чем я могу помочь?""")  # TODO: Улучшить приветственное сообщение
 
     return 1
 
