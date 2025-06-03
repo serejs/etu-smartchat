@@ -14,8 +14,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from yandex_cloud_ml_sdk import YCloudML
 
 argumentList = sys.argv[1:]
-options = "m:s:o:a:e"
-long_options = ["meta", "size", "overlap", "audio", "env"]
+options = "m:s:o:t:e"
+long_options = ["meta", "size", "overlap", "text", "env"]
 docs_metadata_json_path = None
 chunk_size = -1
 chunk_overlap = -1
