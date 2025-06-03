@@ -2,7 +2,7 @@ import os
 import whisper
 
 model_type = os.getenv('WHISPER_MODEL', 'tiny')  # e.g. "tiny", "base", "small", "medium", "large"
-audio_dir = os.getenv('AUDIO_DIR', 'videos')
+audio_dir = os.getenv('VIDEO_DIR', 'videos')
 
 if __name__ == '__main__':
     print('Fetching audio filenames...')
