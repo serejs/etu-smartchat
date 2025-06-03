@@ -1,17 +1,10 @@
 from os import environ
-from uuid import uuid4
 
 import numpy as np
+from chromadb import EmbeddingFunction, Embeddings, Documents
 from chromadb import HttpClient
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from model import sdk
-
-import os
-import json
-
-from chromadb import EmbeddingFunction, Embeddings, Documents
 
 collection_name = environ.get("CHROMA_COLLECTION")
 docs_embeddings = sdk.models.text_embeddings("doc")
