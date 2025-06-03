@@ -111,9 +111,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     Returns:
     - int: next state
     """
+    docs = collection.get(include=["metadatas"])
+    modules = set()
+    for meta in docs["metadatas"]:
+        if "module" in meta:
+            modules.add(meta["module"])
+    modules = '\n'.join(list(modules))
     await update.message.reply_text(
-f"""Привет, я являюсь помощником по онлайн-курсам ЛЭТИ. 
-Задавайте мне вопросы по курсам и я буду рад на них отвечать""")
+f"""Привет, я являюсь помощником по программам online обучения института Искуственного Интеллекта им А. С. Попова  (ЛЭТИ). 
+Я только учусь, на данный момент я обучен по модулям: \n{modules}\n
+Задавайте мне вопросы в рамках этих компетенций и я буду рад на них ответить.""")
 
     return 1
 
