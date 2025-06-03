@@ -9,7 +9,7 @@ import numpy as np
 from chromadb import EmbeddingFunction, Embeddings, Documents
 from chromadb import HttpClient
 from dotenv import load_dotenv
-from langchain_core.documents import Document
+from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from yandex_cloud_ml_sdk import YCloudML
 
@@ -68,17 +68,8 @@ ef = YaEmbeddings()
 collection = client.get_or_create_collection(collection_name, embedding_function=ef)
 
 if __name__ == '__main__':
-    documents = []
-    for filename in os.listdir(text_dir):
-        if not filename.endswith('.txt'): continue
-
-        file_path = os.path.join(text_dir, filename)
-
-        with open(file_path, 'r', encoding='utf-8') as file:
-            text = '\n'.join(file.readlines())
-
-        documents.append(Document(page_content=text, metadata={"source": text}))
-
+    loader = DirectoryLoader(text_dir, glob="**/*.txt")
+    documents = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap
