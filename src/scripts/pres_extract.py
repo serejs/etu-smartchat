@@ -1,43 +1,47 @@
-import io
-import json
-
-import fitz
+import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
-
-"""
-Для colab
-!sudo apt update
-!sudo apt install tesseract-ocr -y
-!sudo apt install libtesseract-dev -y
-!sudo apt install tesseract-ocr-eng -y  # Для английского языка
-!sudo apt install tesseract-ocr-rus -y  # Для русского языка
-%pip install PyMuPDF pytesseract
-"""
+import io
+import os
+import json
+from uuid import uuid4
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-def extract_text(pres_path) -> None:
+def extract_text(
+        collection,  # ChromaDB коллекция
+        pdf_path,  # Путь к PDF файлу
+        chunk_size=1000,  # Размер чанка
+        chunk_overlap=100,  # Перекрытие чанков
+        metadata_json_path=None  # Путь к JSON с метаданными
+) -> None:
     """
-    Extracts text from a PDF file.
-    Takes the path to the file and creates a file named 'file' in JSON format.
-    Structure:
-        "amount_slides": int - number of slides,
-        "titles": list - titles (first lines) of the pages,
-        "bodies": list - body text of the pages,
-        "text_images": list[list] - recognized text from images.
-      """
-    output = {
-        "amount_slides": 0,
-        "titles":        [],
-        "bodies":        [],
-        "text_images":   []
-    }
+    Обрабатывает PDF и добавляет данные в ChromaDB
+    """
+    pdf_filename = os.path.basename(pdf_path)
+    raw_meta = {}
 
-    doc = fitz.open(pres_path)
-    output["amount_slides"] = len(doc)
+    # Загрузка метаданных из JSON (если указан)
+    if metadata_json_path:
+        try:
+            with open(metadata_json_path, 'r') as f:
+                raw_meta = json.load(f)
+        except FileNotFoundError:
+            print(f"Metadata file {metadata_json_path} not found. Using empty metadata.")
+
+    # Ключ для поиска метаданных (имя файла без расширения)
+    pdf_key = os.path.splitext(pdf_filename)[0]
+    pdf_metadata = raw_meta.get(pdf_key, {})
+
+    doc = fitz.open(pdf_path)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
 
     for page_num, page in enumerate(doc):
-        # Extract titles
+        # Извлечение текста
         title = ""
         blocks = page.get_text("dict")["blocks"]
         for block in blocks:
@@ -49,17 +53,13 @@ def extract_text(pres_path) -> None:
                             break
                 if title:
                     break
-        output["titles"].append(title)
 
-        # Extract main text
         full_text = page.get_text().strip()
         body = full_text.replace(title, "", 1).strip() if title else full_text
-        output["bodies"].append(body)
+        slide_text = f"{title}\n{body}"
 
-        # Extract images from slides
-        slide_images_text = []
+        # Извлечение текста с изображений
         img_list = page.get_images(full=True)
-
         for img_info in img_list:
             xref = img_info[0]
             try:
@@ -68,14 +68,28 @@ def extract_text(pres_path) -> None:
                 img = Image.open(io.BytesIO(image_data))
                 text = pytesseract.image_to_string(img, lang="rus+eng").strip()
                 if text:
-                    slide_images_text.append(text)
+                    slide_text += f"\n{text}"
             except Exception as e:
-                print(f"Slide # {page_num + 1} error: {e}")
+                print(f"Ошибка в слайде {page_num + 1}: {e}")
 
-        output["text_images"].append(slide_images_text)
+        # Формирование метаданных
+        metadata = {
+            "source": pdf_filename,
+            "slide": page_num + 1,
+            "title": title
+        }
+        metadata.update(pdf_metadata)  # Добавляем общие метаданные
+
+        # Создание документа и разбиение на чанки
+        doc_page = Document(page_content=slide_text, metadata=metadata)
+        chunks = text_splitter.split_documents([doc_page])
+
+        # Добавление чанков в ChromaDB
+        ids = [str(uuid4()) for _ in range(len(chunks))]
+        collection.add(
+            documents=[chunk.page_content for chunk in chunks],
+            ids=ids,
+            metadatas=[chunk.metadata for chunk in chunks]
+        )
 
     doc.close()
-
-    # Save in JSON
-    with open(json_filename, "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=4)
