@@ -20,6 +20,8 @@ services:
       - .:/app
       - ./models:/models
     working_dir: /app
+    depends_on:
+      - chromadb
     env_file:
       - ./src/.env
     networks:
