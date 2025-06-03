@@ -1,29 +1,74 @@
+import getopt
+import json
 import os
+import sys
+from os import environ
+from uuid import uuid4
+from dotenv import load_dotenv
 
+import numpy as np
 import whisper
+from chromadb import EmbeddingFunction, Embeddings, Documents
+from chromadb import HttpClient
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from yandex_cloud_ml_sdk import YCloudML
 from audio_extract import extract_audio
 
-from pathlib import Path
+argumentList = sys.argv[1:]
+options = "m:s:o:a:e"
+long_options = ["meta", "size", "overlap", "audio", "env"]
+docs_metadata_json_path = None
+chunk_size = -1
+chunk_overlap = -1
+audio_dir = None
 
-model_type = os.getenv('WHISPER_MODEL', 'tiny')  # "tiny", "base", "small", "medium", "large"
-default_audio_dir = os.getenv('AUDIO_DIR', 'audio_dir_temp')
-default_video_dir = os.getenv('VIDEO_DIR', 'video_dir')
-default_texts_dir = os.getenv('TEXTS_DIR', 'texts_dir')
+try:
+    # Parsing argument
+    arguments, values = getopt.getopt(argumentList, options, long_options)
+
+    # checking each argument
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-m", "--meta"):
+            docs_metadata_json_path = currentValue
+        if currentArgument in ("-s", "--size"):
+            chunk_size = int(currentValue)
+        if currentArgument in ("-o", "--overlap"):
+            chunk_overlap = int(currentValue)
+        if currentArgument in ("-a", "--audio"):
+            audio_dir = currentValue
+        if currentArgument in ("-e", "--env"):
+            load_dotenv(currentValue)
 
 
-def transcribe_audio(model, audio_path):
-    """Recognizes audio from .mp3 audio to text"""
-    result = model.transcribe(audio_path)
-    return result['text']
+except getopt.error as err:
+    print(str(err))
+
+if chunk_size <= 0 or chunk_overlap < 0 or chunk_size < chunk_overlap:
+    raise ValueError("Invalid chunk size or overlap")
+
+if audio_dir is None:
+    raise ValueError("Audio dir is not set")
+
+sdk = YCloudML(
+    folder_id=os.getenv("YANDEX_FOLDER_ID"),
+    auth=os.getenv("YANDEX_AUTH")
+)
+
+model_type = os.getenv('WHISPER_MODEL', 'tiny')  # e.g. "tiny", "base", "small", "medium", "large"
+
+collection_name = os.getenv("CHROMA_COLLECTION")
+docs_embeddings = sdk.models.text_embeddings("doc")
 
 
-def prepare_env(dirs: list[str]):
-    """Create dirs for following functions"""
-    for path in dirs:
-        path = Path(path)
+class YaEmbeddings(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        return [np.array(docs_embeddings.run(doc)) for doc in input]
 
-        if not path.exists():
-            path.mkdir(parents=True)
+print(environ.get("CHROMA_HOST", 'localhost'), environ.get("CHROMA_PORT", "8000"))
+client = HttpClient(host=environ.get("CHROMA_HOST", 'localhost'), port=environ.get("CHROMA_PORT", "8000"))
+ef = YaEmbeddings()
+collection = client.get_or_create_collection(collection_name, embedding_function=ef)
 
 
 def convert_video_file(source_path, destination_path):
@@ -35,16 +80,7 @@ def convert_video_file(source_path, destination_path):
     )
 
 
-def write_text(filenames: list, contents: list) -> None:
-    """Write contents to files with corresponding filenames"""
-    assert len(filenames) == len(contents)
-
-    for filename, content in zip(filenames, contents):
-        with open(filename, 'w') as textf:
-            textf.writelines(content)
-
-
-def video_to_audio(video_dir=default_video_dir, audio_dir=default_audio_dir) -> None:
+def video_to_audio(video_dir=audio_dir, audio_dir=audio_dir) -> None:
     """Convert video files to audio files"""
     print('Fetching video filenames...')
     videos = [item for item in os.listdir(video_dir) if '.mp4' in item]
@@ -57,59 +93,43 @@ def video_to_audio(video_dir=default_video_dir, audio_dir=default_audio_dir) -> 
         print('-', dest, 'is converted')
 
 
-def audio_to_text(audio_dir=default_audio_dir, texts_dir=default_texts_dir) -> None:
-    """Convert audio files to text files"""
+if __name__ == '__main__':
+    video_to_audio()
     print('Fetching audio filenames...')
     audios = [item for item in os.listdir(audio_dir) if '.mp3' in item]
     print('Fetched following audios: ', *audios, sep='\n- ', end='\n\n')
 
     asr_model = whisper.load_model(model_type)
 
+    documents = []
     for audio in audios:
-        text = transcribe_audio(asr_model, os.path.join(audio_dir, audio))
-        filename = os.path.join(texts_dir, audio.split('.mp3')[0] + '.txt')
-        print('-', audio, 'is converted')
+        text = asr_model.transcribe(os.path.join(audio_dir, audio))['text']
+        documents.append(Document(page_content=text, metadata={"source": audio}))
 
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
+    raw_meta = {}
+    if docs_metadata_json_path is not None:
         try:
-            with open(filename, 'w') as textf:
-                textf.writelines(text)
-                print('File is written')
-        except Exception as e:
-            print('Something went wrong:', e)
+            with open(docs_metadata_json_path) as f:
+                raw_meta = json.load(f)
+        except FileNotFoundError:
+            print(f"File {docs_metadata_json_path} not found, using empty metadata.")
 
-
-def text_from_video(path: str) -> str:
-    """Get text from video"""
-    audio_path = path.split('.mp4')[0] + '.mp3'
-    convert_video_file(path, audio_path)
-    asr_model = whisper.load_model(model_type)
-    text = transcribe_audio(asr_model, audio_path)
-    os.remove(audio_path)
-    return text
-
-
-def save_text(video_path: str, save_dir: str = '.') -> None:
-    """Save text file from video"""
-    text = text_from_video(video_path)
-    new_name = Path(video_path).name.split('.mp4')[0] + '.txt'
-    write_text([os.path.join(save_dir, new_name)], [text])
-
-
-def end2end_pipeline() -> None:
-    print('Preparing environment...')
-    prepare_env([default_video_dir, default_audio_dir, default_texts_dir])
-    print('Environment is ready', end='\n\n')
-
-    print('Start converting videos to audio files...')
-    video_to_audio()
-    print('Converting is completed', end='\n\n')
-
-    print('Start recognition audio files...')
-    audio_to_text()
-    print('Recognition is completed', end='\n\n')
-
-    print("Finishing script...")
-
-
-if __name__ == '__main__':
-    audio_to_text()
+    for document in documents:
+        name = os.path.splitext(os.path.basename(document.metadata["source"]))[0]
+        name = [key for key in raw_meta.keys() if key in name]
+        if len(name) != 0:
+            name = name[0]
+            document.metadata["source"] = name
+            for meta in raw_meta[name]:
+                document.metadata[meta] = raw_meta[name][meta]
+        chunks = text_splitter.split_documents([document])
+        ids = [str(uuid4()) for _ in range(len(chunks))]
+        collection.add(
+            documents=[chunk.page_content for chunk in chunks],
+            ids=ids,
+            metadatas=[chunk.metadata for chunk in chunks],
+        )

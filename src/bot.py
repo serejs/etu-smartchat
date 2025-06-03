@@ -25,7 +25,7 @@ try:
 except Exception as e:
     print('Using default prompt, error fetching file', e)
     system_prompt = """Ты — ассистент. Отвечающий на вопросы пользователей **ИСКЛЮЧИТЕЛЬНО** на основе предоставленного контекста. Если ответа нет в контексте скажи, что ты не знаешь ответа. Для ответа используй не более 5 предложений
-Контекст: {context}
+{context}
 """
 
 query_embedder = sdk.models.text_embeddings("query")
@@ -48,8 +48,23 @@ prompt = ChatPromptTemplate.from_messages(
 
 def format_docs(docs: QueryResult):
     logger.info(docs)
-    logger.info("Sources:\n%s\n", '\n'.join(metadata['source'] for metadata in docs['metadatas'] if 'source' in metadata))
-    return "\n\n".join(docs['documents'][0])
+    sources = []
+    for metadata in docs["metadatas"][0]:
+        source = []
+        if "course" in metadata:
+            source.append(metadata["course"])
+        if "module" in metadata:
+            source.append(metadata["module"])
+        if "source" in metadata:
+            source.append(metadata["source"])
+        if "url" in metadata:
+            source.append(metadata["url"])
+        source = '-'.join(source)
+        sources.append(source)
+    sources = '\n'.join(list(set(sources)))
+
+    logger.info("Sources:\n%s\n", sources)
+    return "\n".join(["Источники:", sources, "Контекст:", '\n\n'.join(docs['documents'][0])])
 
 
 def log(inp):
@@ -81,7 +96,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     - int: next state
     """
     await update.message.reply_text(
-        f"""Привет, чем я могу помочь?""")  # TODO: Улучшить приветственное сообщение
+f"""Привет, я являюсь помощником по онлайн-курсам ЛЭТИ. 
+Задавайте мне вопросы по курсам и я буду рад на них отвечать""")
 
     return 1
 
