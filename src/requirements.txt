@@ -8,3 +8,4 @@ langchain-chroma==0.2.4
 chromadb==1.0.10
 unstructured==0.17.2
 python-telegram-bot==22.1
+yandex-cloud-ml-sdk[langchain]==0.10.0
